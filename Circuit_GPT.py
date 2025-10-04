@@ -1,15 +1,24 @@
 import streamlit as st
+import cv2
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-from PIL import Image
-import numpy as np
 from io import BytesIO
 
-# ---------------- Component Library ---------------- #
+# ---------------- Existing Circuit Code ---------------- #
+
 COMPONENTS = {
-    "LDR": {"image": None, "pins": ["VCC", "GND", "A0", "D0"]},
-    "Ultrasonic": {"image": None, "pins": ["VCC", "GND", "TRIG", "ECHO"]}
+    "LDR": {
+        "image": "LDR2.png",
+        "pins": ["VCC", "GND", "A0", "D0"]
+    },
+    "Ultrasonic": {
+        "image": "Ultrasonic3.png",
+        "pins": ["VCC", "GND", "TRIG", "ECHO"]
+    }
 }
+
+ARDUINO_IMAGE = "Arduino UNO2.png"
 
 PIN_MAP = {
     "D13": ("right", 0.47), "D12": ("right", 0.51), "D11": ("right", 0.54),
@@ -36,12 +45,11 @@ def draw_conn(ax, start, end, label, color="red"):
     ax.add_patch(Circle(end, 0.7, color="green", zorder=3))
 
 
-def place_and_draw(arduino_img, components):
-    if arduino_img is None:
+def place_and_draw(components):
+    if not os.path.exists(ARDUINO_IMAGE):
         raise FileNotFoundError("Arduino UNO image not found")
 
-    # Convert PIL image to numpy array
-    ar_img = np.array(arduino_img)
+    ar_img = cv2.cvtColor(cv2.imread(ARDUINO_IMAGE), cv2.COLOR_BGR2RGB)
     ar_h, ar_w = ar_img.shape[:2]
 
     total_w, total_h = 100, 100
@@ -72,21 +80,19 @@ def place_and_draw(arduino_img, components):
         else:
             pin_coords[pin] = (ar_x0, ar_y0 + (ar_y1 - ar_y0) * f)
 
-    # Place components
     spacing, sensor_max_w = 6, right_w - 4
     y_top = total_h - margin
     for idx, (name, user_pins) in enumerate(components):
-        img = COMPONENTS[name]["image"]
-        if img is None:
+        if name not in COMPONENTS:
             continue
 
-        img_np = np.array(img)
-        h, w = img_np.shape[:2]
+        img = cv2.cvtColor(cv2.imread(COMPONENTS[name]["image"]), cv2.COLOR_BGR2RGB)
+        h, w = img.shape[:2]
         disp_w, disp_h = sensor_max_w, sensor_max_w * (h / w)
         y1, y0 = y_top, y_top - disp_h
         cx = (right_x0 + right_x1) / 2
         x0, x1 = cx - disp_w / 2, cx + disp_w / 2
-        ax.imshow(img_np, extent=[x0, x1, y0, y1], origin='lower', zorder=1)
+        ax.imshow(img, extent=[x0, x1, y0, y1], origin='lower', zorder=1)
 
         n_pins = len(COMPONENTS[name]["pins"])
         pin_positions = {}
@@ -126,15 +132,31 @@ def place_and_draw(arduino_img, components):
 
 
 # ---------------- Streamlit UI ---------------- #
+
 st.set_page_config(page_title="CircuitGPT", layout="wide")
 
 st.markdown("""
     <style>
-        body { background-color: #f9f9fb; }
+        body {
+            background-color: #f9f9fb;
+        }
+        .stTextInput>div>div>input {
+            background-color: #ffffff !important;
+            border: 2px solid #ddd !important;
+            border-radius: 8px !important;
+            color: #333 !important;
+            padding: 8px;
+        }
+        h1 {
+            color: #1a1a1a;
+            text-align: center;
+            font-family: 'Trebuchet MS', sans-serif;
+        }
         .marquee {
             width: 100%;
             overflow: hidden;
             white-space: nowrap;
+            box-sizing: border-box;
             background: linear-gradient(to right, #e0f7fa, #ffffff);
             color: #00796b;
             font-weight: bold;
@@ -142,6 +164,7 @@ st.markdown("""
             padding: 10px;
         }
     </style>
+
     <div class="marquee">
         <marquee behavior="scroll" direction="left" scrollamount="6">⚡ CircuitGPT — Visualize Arduino Sensor Connections Instantly ⚡</marquee>
     </div>
@@ -149,20 +172,8 @@ st.markdown("""
 
 st.title("🔌 Circuit Connection Builder")
 
-st.markdown("### 🖼️ Upload Required Images")
-arduino_img = st.file_uploader("Upload Arduino UNO image", type=["png", "jpg", "jpeg"])
-ldr_img = st.file_uploader("Upload LDR Sensor image", type=["png", "jpg", "jpeg"])
-ultra_img = st.file_uploader("Upload Ultrasonic Sensor image", type=["png", "jpg", "jpeg"])
+num_components = st.number_input("How many components to attach?", min_value=1, max_value=5, value=1, step=1)
 
-if arduino_img and ldr_img and ultra_img:
-    COMPONENTS["LDR"]["image"] = Image.open(ldr_img).convert("RGB")
-    COMPONENTS["Ultrasonic"]["image"] = Image.open(ultra_img).convert("RGB")
-    arduino_img = Image.open(arduino_img).convert("RGB")
-else:
-    st.warning("⚠️ Please upload all 3 images before generating the circuit diagram.")
-    arduino_img = None
-
-num_components = st.number_input("How many components to attach?", min_value=1, max_value=5, value=1)
 components = []
 for i in range(num_components):
     st.markdown(f"### Component {i + 1}")
@@ -176,7 +187,7 @@ for i in range(num_components):
 
 if st.button("Generate Circuit Diagram ⚙️"):
     try:
-        buf = place_and_draw(arduino_img, components)
-        st.image(buf, caption="Generated Arduino Circuit", use_container_width=True)
+        image_buf = place_and_draw(components)
+        st.image(image_buf, caption="Generated Arduino Circuit", use_container_width=True)
     except Exception as e:
         st.error(f"Error: {e}")
