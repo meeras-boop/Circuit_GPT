@@ -7,18 +7,13 @@ from io import BytesIO
 
 # ---------------- Existing Circuit Code ---------------- #
 
+
+ARDUINO_IMAGE = "./images/Arduino UNO2.png"
 COMPONENTS = {
-    "LDR": {
-        "image": "LDR2.png",
-        "pins": ["VCC", "GND", "A0", "D0"]
-    },
-    "Ultrasonic": {
-        "image": "Ultrasonic3.png",
-        "pins": ["VCC", "GND", "TRIG", "ECHO"]
-    }
+    "LDR": {"image": "./images/LDR2.png", "pins": ["VCC", "GND", "A0", "D0"]},
+    "Ultrasonic": {"image": "./images/Ultrasonic3.png", "pins": ["VCC", "GND", "TRIG", "ECHO"]}
 }
 
-ARDUINO_IMAGE = "Arduino UNO2.png"
 
 PIN_MAP = {
     "D13": ("right", 0.47), "D12": ("right", 0.51), "D11": ("right", 0.54),
@@ -191,3 +186,4 @@ if st.button("Generate Circuit Diagram ⚙️"):
         st.image(image_buf, caption="Generated Arduino Circuit", use_container_width=True)
     except Exception as e:
         st.error(f"Error: {e}")
+
