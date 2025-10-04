@@ -188,6 +188,8 @@ for i in range(num_components):
 if st.button("Generate Circuit Diagram ⚙️"):
     try:
         image_buf = place_and_draw(components)
-        st.image(image_buf, caption="Generated Arduino Circuit", use_container_width=True)
+        st.image(image_buf, caption="Generated Arduino Circuit", use_column_width=True)
     except Exception as e:
         st.error(f"Error: {e}")
+
+
